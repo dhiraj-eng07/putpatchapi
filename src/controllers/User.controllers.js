@@ -1,4 +1,8 @@
 import { User } from "../models/User.models.js";
+import bcrypt from "bcryptjs";
+
+//otp service imports
+import { sendOtpEmail } from "../services/OtpEmailVerification.js";
 
 // validator imports
 import { SignupValidation, LoginValidation } from "../validator/User.validation.js";
@@ -104,3 +108,57 @@ export const Login = async (req, res) => {
         return res.status(500).json({ msg: "Internal Server Error" });
     }
 }
+
+// function for send verify otp using nodemailer 
+export const sendEmailOtp = async (req, res) => {
+  try {
+    const { email } = req.params; // use lowercase standard
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        msg: "Email is required",
+      });
+    }
+
+    // ✅ Find user by email
+    const userFound = await User.findOne({ email });
+
+    if (!userFound) {
+      return res.status(404).json({
+        success: false,
+        msg: "User not found",
+      });
+    }
+
+    // ✅ Generate 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // ✅ Hash OTP
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    // ✅ Expiry time (5 minutes)
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+
+    // ✅ Save OTP in DB
+    userFound.otp = hashedOtp;
+    userFound.otpExpiry = otpExpiry;
+    await userFound.save();
+
+    // ✅ Send OTP email
+    await sendOtpEmail(userFound.fullname, userFound.email, otp);
+
+    return res.status(200).json({
+      success: true,
+      msg: "OTP sent successfully to your email",
+    });
+
+  } catch (error) {
+    console.error("Send OTP Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Internal Server Error",
+    });
+  }
+};

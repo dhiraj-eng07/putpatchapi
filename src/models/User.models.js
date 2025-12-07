@@ -40,16 +40,26 @@ const userSchema = new mongoose.Schema({
 
   preferred_language: String,
   timezone: String,
-  last_login: Date
+  last_login: Date,
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  otp: {
+    type: String,
+  },
+  otpExpiry: {
+    type: Date,
+  },
 }, { timestamps: true });
 
 /******************** Password HASHING ********************/
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("Password")) ;
+  if (!this.isModified("Password"));
 
   const salt = await bcrypt.genSalt(10);
   this.Password = await bcrypt.hash(this.Password, salt);
-  
+
 });
 
 /******************** GENERATE JWT TOKEN ********************/
