@@ -1,5 +1,7 @@
 import { User } from "../models/User.models.js";
-
+import bcrypt from "bcryptjs";
+//otp service imports
+import { sendOtpEmail } from "../services/OtpEmailVerification.js";
 // validator imports
 import { SignupValidation, LoginValidation } from "../validator/User.validation.js";
 
@@ -8,45 +10,65 @@ export const SignUp = async (req, res) => {
     try {
         const data = SignupValidation.parse(req.body);
 
-        // chaeking for user already existed in database
+        // ✅ Check if user already exists
         const oldUser = await User.findOne({ email: data.email });
 
         if (oldUser) {
-            return res.status(409).json({ msg: "user already existed", oldUser })
+            return res.status(409).json({
+                success: false,
+                msg: "User already exists"
+            });
         }
 
+        // ✅ Create user with additional fields
         const newUser = await User.create({
             fullname: data.fullname,
             email: data.email,
             phone_number: data.phone_number,
-            Password: data.Password,
-        })
+            Password: data.Password, // model hashes it
+            dob: data.dob,
+            gender: data.gender,
+            timezone: data.timezone,
+            preferred_language: data.preferred_language
+        });
 
         if (!newUser) {
-            return res.status(400).json({ msg: "user not created" })
+            return res.status(400).json({
+                success: false,
+                msg: "User not created"
+            });
         }
 
-        return res.status(200).json({
-            msg: " user created",
-            newUser: {
-                fullname: data.fullname,
-                email: data.email,
-                phone_number: data.phone_number
+        return res.status(201).json({
+            success: true,
+            msg: "User created successfully",
+            user: {
+                fullname: newUser.fullname,
+                email: newUser.email,
+                phone_number: newUser.phone_number,
+                dob: newUser.dob,
+                gender: newUser.gender,
+                timezone: newUser.timezone,
+                preferred_language: newUser.preferred_language
             }
-        })
+        });
     } catch (error) {
-        // Zod Validation Error Handling
+        // ✅ Zod Validation Error
         if (error.name === "ZodError") {
             return res.status(400).json({
+                success: false,
                 msg: "Validation error",
-                errors: error.errors,
+                errors: error.errors
             });
         }
 
         console.log("Controller Error:", error);
-        return res.status(500).json({ msg: "Internal Server Error" });
+        return res.status(500).json({
+            success: false,
+            msg: "Internal Server Error"
+        });
     }
-}
+};
 
 // login user controller function //
 export const Login = async (req, res) => {
@@ -104,3 +126,120 @@ export const Login = async (req, res) => {
         return res.status(500).json({ msg: "Internal Server Error" });
     }
 }
+
+// function for send verify otp using nodemailer
+export const sendEmailOtp = async (req, res) => {
+    try {
+        const { email } = req.params; // use lowercase standard
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                msg: "Email is required",
+            });
+        }
+
+        // ✅ Find user by email
+        const userFound = await User.findOne({ email });
+
+        if (!userFound) {
+            return res.status(404).json({
+                success: false,
+                msg: "User not found",
+            });
+        }
+
+        // ✅ Generate 4-digit OTP
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        // ✅ Hash OTP
+        const hashedOtp = await bcrypt.hash(otp, 10);
+
+        // ✅ Expiry time (5 minutes)
+        const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+
+        // ✅ Save OTP in DB
+        userFound.otp = hashedOtp;
+        userFound.otpExpiry = otpExpiry;
+        await userFound.save();
+
+        // ✅ Send OTP email
+        await sendOtpEmail(userFound.fullname, userFound.email, otp);
+
+        return res.status(200).json({
+            success: true,
+            msg: "OTP sent successfully to your email",
+        });
+    } catch (error) {
+        console.error("Send OTP Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            msg: "Internal Server Error",
+        });
+    }
+};
+
+// NEWLY ADDED: Verify OTP Function
+
+export const VerifyOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        // 1. Basic Validation
+        if (!email || !otp) {
+            return res.status(400).json({
+                success: false,
+                msg: "Email and OTP are required"
+            });
+        }
+
+        // 2. Find User
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                msg: "User not found"
+            });
+        }
+
+        // 3. Check if OTP is expired
+        if (user.otpExpiry && user.otpExpiry < Date.now()) {
+            return res.status(400).json({
+                success: false,
+                msg: "OTP has expired. Please request a new one."
+            });
+        }
+
+        // 4. Verify OTP 
+        
+        const isMatch = await bcrypt.compare(otp, user.otp || "");
+
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                msg: "Invalid OTP. Please check your code."
+            });
+        }
+
+        // 5. Success - 
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+        user.is_verified = true; // Assuming you have an 'is_verified' field in model
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            msg: "Email verified successfully!"
+        });
+
+    } catch (error) {
+        console.error("Verify OTP Controller Error:", error);
+        return res.status(500).json({
+            success: false,
+            msg: "Internal Server Error"
+        });
+    }
+};

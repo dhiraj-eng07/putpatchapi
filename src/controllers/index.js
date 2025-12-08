@@ -17,11 +17,12 @@
 // ===============================================
 
 import { FormController } from "./Form.controllers.js";
-import { SignUp ,Login } from "./User.controllers.js";
+import { SignUp ,Login , sendEmailOtp } from "./User.controllers.js";
 
 // Export all controllers together
 export {
     FormController,
     SignUp,
-    Login
+    Login,
+    sendEmailOtp
 };
