@@ -5,6 +5,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
+import Razorpay from "razorpay";
 
 // ===============================================================
 // 🗄️ Database Import
@@ -16,8 +17,8 @@ import { connectToDatabase } from "./src/db/db.js";
 // ===============================================================
 import { FormRouter } from "./src/router/Form.router.js";
 import { userRouter } from "./src/router/User.router.js";
+import { RazorpayRouter } from "./src/router/Razorypay.router.js";
 import { AvailabilityRouter } from "./src/router/Availability.router.js"
-
 
 // ===============================================================
 // 🚀 Create Express App Instance
@@ -62,12 +63,23 @@ app.use(express.static("/tmp", { index: false }));
 // 🏠 Default Route
 // ===============================================================
 app.get("/", (req, res) => {
-  res.status(200).json({ msg: "backend is running" });
+  res.status(200).json({ msg: "Web server is running healthy!" });
 });
 
 // ===============================================================
 // 📌 Register Application Routes
 // ===============================================================
+
+// ===============================================================
+//  Razorpay Instance
+// ===============================================================
+
+export const instance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+app.use("/razorpay",RazorpayRouter);
 app.use("/api/form", FormRouter); 
 app.use("/api/user",userRouter);
 app.use("/api/availability", AvailabilityRouter)
