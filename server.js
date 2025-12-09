@@ -66,9 +66,6 @@ app.get("/", (req, res) => {
   res.status(200).json({ msg: "Web server is running healthy!" });
 });
 
-// ===============================================================
-// 📌 Register Application Routes
-// ===============================================================
 
 // ===============================================================
 //  Razorpay Instance
@@ -79,7 +76,12 @@ export const instance = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-app.use("/razorpay",RazorpayRouter);
+// ===============================================================
+// 📌 Register Application Routes
+// ===============================================================
+
+
+// app.use("/razorpay",RazorpayRouter);
 app.use("/api/form", FormRouter); 
 app.use("/api/user",userRouter);
 app.use("/api/availability", AvailabilityRouter)

@@ -1,4 +1,5 @@
 import { User } from "../models/User.models.js";
+import { Counsellor } from "../models/Counsellor.models.js";
 import bcrypt from "bcryptjs";
 //otp service imports
 import { sendOtpEmail } from "../services/OtpEmailVerification.js";
@@ -243,3 +244,46 @@ export const VerifyOtp = async (req, res) => {
         });
     }
 };
+
+// get user history 
+export const getHistory = async (req, res) => {
+  try {
+    const { counsellorId } = req.params;
+
+    if (!counsellorId) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "counsellorId is required" 
+      });
+    }
+
+    // ✅ Find counsellor and populate history.customerId to get user details
+    const counsellor = await Counsellor.findById(counsellorId)
+      .populate("history.customerId", "fullname email phone_number");
+
+    if (!counsellor) {
+      return res.status(404).json({ 
+        success: false, 
+        msg: "Counsellor not found" 
+      });
+    }
+
+    // ✅ Optionally sort by latest visit first
+    const sortedHistory = counsellor.history.sort(
+      (a, b) => b.visitDate - a.visitDate
+    );
+
+    return res.status(200).json({
+      success: true,
+      history: sortedHistory
+    });
+
+  } catch (error) {
+    console.error("Get History Error:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "Internal Server Error"
+    });
+  }
+};
+

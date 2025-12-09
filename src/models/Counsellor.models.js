@@ -85,8 +85,14 @@ const counsellorSchema = new mongoose.Schema({
     type: String,
     enum: ["active", "inactive", "banned"],
     default: "active"
-  }
-
+  },
+   history: [
+      {
+        customerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        visitDate: { type: Date, default: Date.now },
+        notes: { type: String }, // optional notes about the session
+      }
+    ]
 }, { timestamps: true });
 
 export const Counsellor =  mongoose.model("Counsellor", counsellorSchema);
