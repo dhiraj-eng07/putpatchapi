@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 //otp service imports
 import { sendOtpEmail } from "../services/OtpEmailVerification.js";
 // validator imports
-import { SignupValidation, LoginValidation } from "../validator/User.validation.js";
+import { SignupValidation, LoginValidation, AdminLoginValidation } from "../validator/User.validation.js";
 
 // signup user controller function //
 export const SignUp = async (req, res) => {
@@ -125,6 +125,58 @@ export const Login = async (req, res) => {
 
         console.log("Controller Error:", error);
         return res.status(500).json({ msg: "Internal Server Error" });
+    }
+}
+
+// admin mogin controller function //
+export const amdinLogin = async (req, res) => {
+    try {
+        const data = AdminLoginValidation.parse(req.body);
+
+        const userExisted = await User.findOne({ email: data.email });
+
+        if(!userExisted){
+            return res.status(404).json({ msg : "user not found"})
+        }
+
+        if (userExisted.role != "admin") {
+            return res.status(402).json({ msg : "only admin can login"})
+        }
+
+        const user = await userExisted.comparePassword(data.Password);
+
+        if(!user){
+            return res.status(400).json({msg : "email or password maybe not correct"})
+        }
+        const token =  userExisted.generateAuthToken();
+
+        // cookie option
+        const option = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            // secure: false, // Set to true if using HTTPS
+        };
+
+        if (user) {
+            res
+                .status(200)
+                .cookie("authToken", token, option)
+                .json({
+                    message: "Login successful",
+                    token,
+                    user: {
+                        id: userExisted._id,
+                        fullname: userExisted.fullname,
+                        email: userExisted.email,
+                        role: userExisted.role
+                    }
+                });
+        } else {
+            res.status(401).json({ message: "Invalid email or password." });
+        }
+
+    } catch (error) {
+        console.log(error)
     }
 }
 

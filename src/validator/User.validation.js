@@ -37,6 +37,11 @@ export const SignupValidation = z.object({
 });
 
 export const LoginValidation = z.object({
-    email : z.email(),
-    Password : z.string(),
+  email: z.email(),
+  Password: z.string(),
+})
+
+export const AdminLoginValidation = z.object({
+  email: z.email(),
+  Password: z.string(),
 })

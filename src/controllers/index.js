@@ -17,17 +17,20 @@
 // ===============================================
 
 import { FormController } from "./Form.controllers.js";
-import { SignUp ,Login , sendEmailOtp , VerifyOtp ,getHistory } from "./User.controllers.js";
-import { CounsellorSignup , CounsellorLogin } from "./Counsellor.controllers.js";
+import { SignUp ,Login , amdinLogin, sendEmailOtp , VerifyOtp ,getHistory } from "./User.controllers.js";
+import { CounsellorSignup , CounsellorLogin , getallCounsellor, getCounsellorByEmail } from "./Counsellor.controllers.js";
 
 // Export all controllers together
 export {
     FormController,
     SignUp,
     Login,
+    amdinLogin,
     sendEmailOtp,
     VerifyOtp,
     getHistory,
     CounsellorLogin,
-    CounsellorSignup
+    CounsellorSignup,
+    getallCounsellor,
+    getCounsellorByEmail
 };

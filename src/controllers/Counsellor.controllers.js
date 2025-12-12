@@ -50,6 +50,10 @@ export const CounsellorSignup = async (req, res) => {
         --------------------------------------------------------- */
         const profile = await Counsellor.create({
             user_id: user._id,
+            fullname : data.fullname,
+            email : data.email,
+            dob : data.dob,
+            gender : data.gender,
             contact_number: data.contact_number,
             counselling_type: data.counselling_type,
             specialties: data.specialties,
@@ -90,10 +94,19 @@ export const CounsellorLogin = async (req, res) => {
         const data = CounsellorLoginValiation.parse(req.body);
 
         const userExisted = await User.findOne({ email: data.email });
+        const counsellor = await Counsellor.findOne({ email : data.email})
 
-        if (!userExisted || userExisted.role != "counsellor") {
-            return res.status(400).json({ msg : "only counsellor can login"})
+        if(!userExisted){
+            return res.status(404).json({ msg : "user not found"})
         }
+
+        if (userExisted.role != "counsellor") {
+            return res.status(402).json({ msg : "only counsellor can login"})
+        }
+
+        if (!counsellor.Admin_approved) {
+             return res.status(403).json({ msg: "Your profile is not approved by admin yet after approved you can login" });
+           }
 
         const user = await userExisted.comparePassword(data.Password);
 
@@ -127,6 +140,41 @@ export const CounsellorLogin = async (req, res) => {
             res.status(401).json({ message: "Invalid email or password." });
         }
 
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export const getallCounsellor = async(req,res) => {
+    try {
+        const counsellor = await Counsellor.find().select("-documents -history -Admin_approved")
+
+        if(!counsellor){
+            return res.status(400).json({ msg : "counsellor not found"})
+        }
+
+        return res.status(200).json({ msg : "all counsellor fetch ", counsellor})
+
+    } catch (error) {
+        
+    }
+}
+
+export const getCounsellorByEmail = async(req,res) => {
+    try {
+        const { email } = req.params;
+
+        if(!email){
+            return res.status(404).json({ msg : " email is requied"})
+        }
+
+        const counsellor = await Counsellor.findOne({ email : email});
+
+        if(!counsellor){
+            return res.status(404).json({msg : "counsellor not found"})
+        }
+
+        return res.status(200).json({ msg : "counsellor is found" , counsellor})
     } catch (error) {
         console.log(error)
     }

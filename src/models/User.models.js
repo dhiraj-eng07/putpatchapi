@@ -69,7 +69,7 @@ userSchema.methods.generateAuthToken = function () {
       userId: this._id.toString(),
       fullname: this.fullname,
       email: this.email,
-      role: this.role
+      role: this.role,
     },
     process.env.JWT_SECRET_KEY,
     { expiresIn: process.env.TOKEN_EXPIRED_TIME || "1d" }
