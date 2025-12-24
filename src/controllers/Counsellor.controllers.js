@@ -224,3 +224,256 @@ export const resetPassword = async (req, res) => {
         });
     }
 };
+/**
+ * @desc    Update counsellor profile (PATCH - partial update)
+ * @route   PATCH /api/counsellors/:id
+ * @access  Private (Counsellor/Admin)
+ */
+export const updateCounsellor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid counsellor ID'
+      });
+    }
+    
+    // Validate request body (partial validation)
+    const validatedData = updateCounsellorSchema.parse(req.body);
+    
+    // Check if email is being updated and if it's already taken
+    if (validatedData.email) {
+      const existingCounsellor = await Counsellor.findOne({
+        email: validatedData.email,
+        _id: { $ne: id }
+      });
+      
+      if (existingCounsellor) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already registered to another counsellor'
+        });
+      }
+    }
+    
+    // Check if license number is being updated and if it's already taken
+    if (validatedData.licenseNumber) {
+      const existingLicense = await Counsellor.findOne({
+        licenseNumber: validatedData.licenseNumber,
+        _id: { $ne: id }
+      });
+      
+      if (existingLicense) {
+        return res.status(400).json({
+          success: false,
+          message: 'License number already registered to another counsellor'
+        });
+      }
+    }
+    
+    // Update counsellor
+    const counsellor = await Counsellor.findByIdAndUpdate(
+      id,
+      { $set: validatedData },
+      { new: true, runValidators: true }
+    );
+    
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Counsellor updated successfully',
+      data: counsellor
+    });
+  } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error updating counsellor',
+      error: error.message
+    });
+  }
+};
+/**
+ * @desc    Update counsellor status (verification/active status)
+ * @route   PUT /api/counsellors/:id/status
+ * @access  Private/Admin
+ */
+export const updateCounsellorStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid counsellor ID'
+      });
+    }
+    
+    // Validate status update data
+    const validatedData = updateCounsellorStatusSchema.parse(req.body);
+    
+    const counsellor = await Counsellor.findByIdAndUpdate(
+      id,
+      { $set: validatedData },
+      { new: true }
+    );
+    
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: `Counsellor ${validatedData.isActive ? 'activated' : 'deactivated'} successfully`,
+      data: counsellor
+    });
+  } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error updating counsellor status',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Update counsellor's availability (working hours/days)
+ * @route   PUT /api/counsellors/:id/availability
+ * @access  Private (Counsellor)
+ */
+export const updateAvailability = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { workingHours, workingDays } = req.body;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid counsellor ID'
+      });
+    }
+    
+    // Validate working hours format
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (workingHours && (!timeRegex.test(workingHours.start) || !timeRegex.test(workingHours.end))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time format. Use HH:mm format'
+      });
+    }
+    
+    const updateData = {};
+    if (workingHours) updateData.workingHours = workingHours;
+    if (workingDays) updateData.workingDays = workingDays;
+    
+    const counsellor = await Counsellor.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    );
+    
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Availability updated successfully',
+      data: counsellor
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating availability',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Add qualification to counsellor
+ * @route   POST /api/counsellors/:id/qualifications
+ * @access  Private (Counsellor)
+ */
+export const addQualification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { degree, institution, year } = req.body;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid counsellor ID'
+      });
+    }
+    
+    // Validate qualification data
+    if (!degree || !institution || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Degree, institution, and year are required'
+      });
+    }
+    
+    if (year < 1900 || year > new Date().getFullYear()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid year'
+      });
+    }
+    
+    const counsellor = await Counsellor.findByIdAndUpdate(
+      id,
+      { $push: { qualifications: { degree, institution, year } } },
+      { new: true }
+    );
+    
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Qualification added successfully',
+      data: counsellor
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error adding qualification',
+      error: error.message
+    });
+  }
+};

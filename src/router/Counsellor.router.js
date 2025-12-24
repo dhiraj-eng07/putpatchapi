@@ -17,3 +17,7 @@ counsellorRouter.post("/login",CounsellorLogin);
 counsellorRouter.get("/getcounsellor",getallCounsellor);
 counsellorRouter.get("/getcounsellorbyemail/:email",getCounsellorByEmail);
 counsellorRouter.post("/changepassword",resetPassword);
+counsellorRouter.patch('/:id', validate(updateCounsellorSchema), updateCounsellor);
+counsellorRouter.put('/:id/status', validate(updateCounsellorStatusSchema), updateCounsellorStatus);
+counsellorRouter.put('/:id/availability', updateAvailability);
+counsellorRouter.post('/:id/qualifications', addQualification);
